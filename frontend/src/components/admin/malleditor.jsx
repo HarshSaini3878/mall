@@ -42,6 +42,7 @@ export default function AdminGridEditor() {
     // alert(data.message || 'Saved!');
 
     setSavedLayout(layoutData); // Save locally
+    localStorage.setItem(`layout-${layoutData.roomCode}`,JSON.stringify(layoutData));
     alert('Layout saved to local state!');
   };
 
