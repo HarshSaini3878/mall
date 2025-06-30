@@ -1,206 +1,120 @@
-import { useState, useCallback, useEffect } from "react";
-import Board from "../board";
-import { findPath } from "../pathfindingutils.js";  // Update this import path if needed
+import { useState } from 'react';
 
-const GRID_ROWS = 15;
-const GRID_COLS = 20;
+const GRID_ROWS = 10;
+const GRID_COLS = 10;
+const ADMIN_PASSWORD = 'admin123'; // 🔑 Set your password here
 
 const defaultCell = () => ({
-  type: "empty",
+  type: 'empty', // 'shop', 'obstacle', 'gate'
 });
 
-export default function AdminGridEditor() {
+export default function MallEditor() {
   const [grid, setGrid] = useState(
     Array(GRID_ROWS)
       .fill(null)
       .map(() => Array(GRID_COLS).fill(null).map(defaultCell))
   );
+  const [selectedType, setSelectedType] = useState('shop');
+  const [savedLayout, setSavedLayout] = useState(null);
+  const [password, setPassword] = useState('');
+  const [authenticated, setAuthenticated] = useState(false);
 
-  const [selectedType, setSelectedType] = useState("obstacle");
-  const [startCell, setStartCell] = useState(null);
-  const [endCell, setEndCell] = useState(null);
-  const [pathCells, setPathCells] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [roomCode, setRoomCode] = useState("");
-
-  const handleCellClick = useCallback(
-    (row, col) => {
-      if (isRunning) return;
-
-      if (selectedType === "start") {
-        setStartCell({ row, col });
-        return;
-      }
-
-      if (selectedType === "end") {
-        setEndCell({ row, col });
-        return;
-      }
-
-      const newGrid = grid.map((r, i) =>
-        r.map((c, j) => (i === row && j === col ? { type: selectedType } : c))
-      );
-      setGrid(newGrid);
-    },
-    [grid, selectedType, isRunning]
-  );
-
-  useEffect(() => {
-    if (startCell && endCell) {
-      const path = findPath(grid, startCell, endCell);
-      setPathCells(path);
-    } else {
-      setPathCells([]);
-    }
-  }, [startCell, endCell, grid]);
-
-  const clearPath = () => {
-    setPathCells([]);
-  };
-
-  const clearBoard = () => {
-    setGrid(
-      Array(GRID_ROWS)
-        .fill(null)
-        .map(() => Array(GRID_COLS).fill(null).map(defaultCell))
+  const handleCellClick = (row, col) => {
+    const newGrid = grid.map((r, i) =>
+      r.map((c, j) => (i === row && j === col ? { type: selectedType } : c))
     );
-    setStartCell(null);
-    setEndCell(null);
-    setPathCells([]);
-    setSelectedType("obstacle");
-  };
-
-  const generateMaze = () => {
-    const newGrid = Array(GRID_ROWS)
-      .fill(null)
-      .map(() =>
-        Array(GRID_COLS)
-          .fill(null)
-          .map(() => (Math.random() < 0.3 ? { type: "obstacle" } : defaultCell()))
-      );
-
     setGrid(newGrid);
-    setPathCells([]);
-    setStartCell(null);
-    setEndCell(null);
   };
 
-  const saveBoard = () => {
-    if (!roomCode.trim()) {
-      alert("Please enter a room code before saving.");
-      return;
+  const handleSave = () => {
+    const layoutData = {
+      roomCode: 'delhimall',
+      layout: grid,
+      floor: 1,
+      rows: GRID_ROWS,
+      cols: GRID_COLS,
+    };
+
+    localStorage.setItem(`layout-${layoutData.roomCode}`, JSON.stringify(layoutData));
+    setSavedLayout(layoutData);
+    alert('Layout saved successfully!');
+  };
+
+  const handleLogin = () => {
+    if (password === ADMIN_PASSWORD) {
+      setAuthenticated(true);
+    } else {
+      alert('Incorrect Password!');
     }
-
-    const boardData = grid.map((row, i) =>
-      row.map((cell, j) => {
-        if (startCell && startCell.row === i && startCell.col === j)
-          return { type: "empty" };
-        if (endCell && endCell.row === i && endCell.col === j)
-          return { type: "empty" };
-        return cell;
-      })
-    );
-
-    localStorage.setItem(roomCode.trim(), JSON.stringify(boardData));
-    alert(`Board saved with room code: ${roomCode.trim()}`);
   };
 
-  const toolButtons = [
-    { type: "obstacle", label: "Wall", color: "from-orange-500 to-orange-600" },
-    { type: "empty", label: "Empty", color: "from-gray-100 to-gray-200 text-gray-800" },
-    { type: "start", label: "Start", color: "from-green-500 to-green-600" },
-    { type: "end", label: "End", color: "from-red-500 to-red-600" },
-    { type: "shop", label: "Shop", color: "from-green-300 to-green-400" },
-  ];
+  // Login Page
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen flex flex-col justify-center items-center bg-gray-100 p-8">
+        <h1 className="text-3xl font-bold mb-4">Admin Login</h1>
+        <input
+          type="password"
+          placeholder="Enter Admin Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="border p-2 rounded mb-4"
+        />
+        <button
+          onClick={handleLogin}
+          className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+        >
+          Login
+        </button>
+      </div>
+    );
+  }
 
+  // Admin Grid Editor Page
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 shadow-2xl border-b-4 border-slate-700">
-        <div className="container mx-auto px-6 py-4">
-          <h1 className="text-3xl font-bold text-white text-center tracking-wider">
-            🎯 PATHFINDER VISUALIZER
-          </h1>
-        </div>
+    <div className="p-4">
+      <h1 className="text-xl font-bold mb-4">Admin Grid Editor</h1>
+
+      <div className="mb-2 flex gap-2 flex-wrap">
+        {['shop', 'obstacle', 'gate', 'empty'].map((type) => (
+          <button
+            key={type}
+            onClick={() => setSelectedType(type)}
+            className={`px-3 py-1 rounded border 
+              ${selectedType === type ? 'bg-black text-white' : 'bg-white text-black border-gray-400'}`}
+          >
+            {type}
+          </button>
+        ))}
       </div>
 
-      {/* Controls */}
-      <div className="container mx-auto px-6 py-6">
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-6">
-          <div className="flex flex-wrap gap-4 items-center justify-center">
-            <div className="flex gap-2">
-              {toolButtons.map((tool) => (
-                <button
-                  key={tool.type}
-                  onClick={() => setSelectedType(tool.type)}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg border-2 ${
-                    selectedType === tool.type
-                      ? `bg-gradient-to-r ${tool.color} text-white border-gray-400 shadow-xl`
-                      : `bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border-gray-300 hover:shadow-lg`
-                  }`}
-                >
-                  {tool.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex gap-2 border-l-2 border-gray-300 pl-4">
-              <button
-                onClick={clearPath}
-                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-              >
-                Clear Path
-              </button>
-              <button
-                onClick={generateMaze}
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-              >
-                Generate Maze
-              </button>
-              <button
-                onClick={clearBoard}
-                className="px-4 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-              >
-                Clear All
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col sm:flex-row gap-2 items-center justify-center">
-            <input
-              type="text"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value)}
-              placeholder="Enter room code"
-              className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button
-              onClick={saveBoard}
-              className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-            >
-              Save Board
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200">
-          <p className="text-center text-gray-700">
-            <span className="font-semibold">Instructions:</span> Select a tool and click on the grid to place elements.
-            Set start (S) and end (E) points, then add walls to create obstacles for pathfinding.
-          </p>
-        </div>
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 28px)`, gap: '2px' }}>
+        {grid.map((row, i) =>
+          row.map((cell, j) => (
+            <div
+              key={`${i}-${j}`}
+              onClick={() => handleCellClick(i, j)}
+              className={`w-7 h-7 border rounded cursor-pointer flex items-center justify-center text-[10px] select-none
+                ${cell.type === 'shop' ? 'bg-green-400' :
+                  cell.type === 'obstacle' ? 'bg-red-400' :
+                  cell.type === 'gate' ? 'bg-blue-400' : 'bg-gray-100'}`}
+            ></div>
+          ))
+        )}
       </div>
 
-      {/* Board */}
-      <Board
-        grid={grid}
-        onCellClick={handleCellClick}
-        pathCells={pathCells}
-        startPoint={startCell}
-        endPoint={endCell}
-        rows={GRID_ROWS}
-        cols={GRID_COLS}
-      />
+      <button
+        className="mt-4 px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+        onClick={handleSave}
+      >
+        Save Layout
+      </button>
+
+      {savedLayout && (
+        <pre className="mt-4 text-xs bg-gray-100 p-2 rounded max-h-60 overflow-auto">
+          {JSON.stringify(savedLayout, null, 2)}
+        </pre>
+      )}
     </div>
   );
 }
