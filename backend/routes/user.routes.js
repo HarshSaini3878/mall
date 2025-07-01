@@ -2,10 +2,12 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import Map from '../models/map.models.js';
 import User from '../models/user.models.js';
+import { signin, signup } from '../controllers/user.controllers.js';
+import { authenticate, authorizeRole } from '../middlewares/auth.middlewares.js';
 
 const router = express.Router();
 
-router.post('/save-map', async (req, res) => {
+router.post('/save-map',authenticate, authorizeRole('admin'), async (req, res) => {
   const { roomCode, layout, floor, rows, cols, userId } = req.body;
 
   try {
@@ -33,5 +35,6 @@ router.post('/save-map', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
+router.post('/signup', signup);
+router.post('/signin', signin);
 export default router;

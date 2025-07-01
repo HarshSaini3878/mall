@@ -2,9 +2,10 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import navigationRoute from './routes/Navigation.js';
-
+import userRoute from './routes/user.routes.js';
+import { configDotenv } from 'dotenv';
 const app = express();
-
+configDotenv();
 app.use(cors());
 app.use(express.json());
 
@@ -15,5 +16,6 @@ mongoose.connect('mongodb://localhost:27017/mall', {
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
 app.use('/api', navigationRoute);
+app.use('/api/v1/user', userRoute);
 
 app.listen(5000, () => console.log('✅ Server running on port 5000'));
